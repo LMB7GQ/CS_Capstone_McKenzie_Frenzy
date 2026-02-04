@@ -6,9 +6,14 @@ import Library from './pages/Library'
 import Community from './pages/Community'
 import Profile from './pages/Profile'
 import Login from './pages/Login'
+import GamesWidget from './components/GamesWidget'
+
 function App() {
   return (
     <BrowserRouter>
+      {/* show the games list on every page */}
+      <GamesWidget />
+
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/games/:gameId" element={<GameDetails />} />
