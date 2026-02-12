@@ -11,14 +11,14 @@ export default function GameDetails(): React.ReactElement {
 
   useEffect(() => {
     if (!gameId) {
-      setError('No game id provided')
+      setError('No game ID provided')
       setLoading(false)
       return
     }
 
     let mounted = true
 
-    fetchGameById(Number(gameId))
+    fetchGameById(gameId)
       .then((g) => {
         if (!mounted) return
         if (!g) setError('Game not found')
@@ -38,29 +38,77 @@ export default function GameDetails(): React.ReactElement {
     }
   }, [gameId])
 
-  if (loading) return <div>Loading game...</div>
-  if (error) return <div style={{ color: 'red' }}>{error}</div>
-  if (!game) return <div>Game not available</div>
+  if (loading) return <div style={{ padding: 16 }}>Loading game...</div>
+  if (error) return <div style={{ padding: 16, color: 'red' }}>Error: {error}</div>
+  if (!game) return <div style={{ padding: 16 }}>Game not available</div>
 
   return (
-    <div style={{ padding: 16 }}>
-      <h1>{game.title}</h1>
-      <div style={{ display: 'flex', gap: 16 }}>
-        <img src={game.imageUrl} alt={game.title} style={{ width: 300, height: 400, objectFit: 'cover' }} />
+    <div style={{ padding: 20, maxWidth: 900, margin: '0 auto' }}>
+      <h1>{game.name}</h1>
+
+      <div style={{ display: 'flex', gap: 24, marginTop: 24 }}>
+        {/* Left: Image */}
+        {game.background_image && (
+          <img
+            src={game.background_image}
+            alt={game.name}
+            style={{ width: 300, height: 400, objectFit: 'cover', borderRadius: 8 }}
+          />
+        )}
+
+        {/* Right: Details */}
         <div>
-          <p>{game.description}</p>
-          <p>
-            <strong>Genre:</strong> {game.genre}
-          </p>
-          <p>
-            <strong>Platform:</strong> {game.platform}
-          </p>
-          <p>
-            <strong>Rating:</strong> {game.rating}
-          </p>
-          <p>
-            <strong>Release Date:</strong> {game.releaseDate}
-          </p>
+          {/* Description */}
+          {game.description_raw && (
+            <div style={{ marginBottom: 20 }}>
+              <p style={{ lineHeight: 1.6, color: '#333' }}>{game.description_raw}</p>
+            </div>
+          )}
+
+          {/* Info Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 20 }}>
+            {game.rating && (
+              <div>
+                <strong>Rating:</strong> {game.rating} / 5.0 ⭐
+              </div>
+            )}
+
+            {game.metacritic && (
+              <div>
+                <strong>Metacritic:</strong> {game.metacritic}
+              </div>
+            )}
+
+            {game.released && (
+              <div>
+                <strong>Release Date:</strong> {game.released}
+              </div>
+            )}
+
+            {game.playtime && (
+              <div>
+                <strong>Average Playtime:</strong> {game.playtime} hours
+              </div>
+            )}
+
+            {/* Genres */}
+            {game.genres && game.genres.length > 0 && (
+              <div>
+                <strong>Genres:</strong>{' '}
+                {game.genres.map((g) => g.name).join(', ')}
+              </div>
+            )}
+
+            {/* Platforms */}
+            {game.platforms && game.platforms.length > 0 && (
+              <div>
+                <strong>Platforms:</strong>{' '}
+                {game.platforms
+                  .map((p) => p.platform.name)
+                  .join(', ')}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
