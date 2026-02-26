@@ -3,7 +3,7 @@ import csv
 import os
 
 NUM_USERS = 100
-NUM_ITEMS = 10000
+NUM_ITEMS = 1000
 OUTPUT_FILE = "alsRecomender/data/data.csv"
 
 os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)

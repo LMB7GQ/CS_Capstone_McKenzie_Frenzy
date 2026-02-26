@@ -43,7 +43,7 @@ for user in range(20, 30):
 
 
 df = pd.DataFrame(rows, columns=["user_id", "item_id", "hours_played"])
-df.to_csv("super_obvious_data.csv", index=False)
+df.to_csv("alsRecomender\data\data.csv", index=False)
 
 print("Super obvious dataset created!")
 print(df.head(20))
