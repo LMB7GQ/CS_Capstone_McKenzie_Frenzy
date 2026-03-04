@@ -10,6 +10,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import connectDB from "./config/db.js";
+import "./config/cache.js"; 
 import gameRoutes from "./routes/games.js";
 
 const app = express();
