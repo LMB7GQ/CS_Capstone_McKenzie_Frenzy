@@ -1,0 +1,21 @@
+# Data handling
+pandas
+numpy
+
+# Sparse matrices (required by implicit)
+scipy
+
+# Implicit ALS recommender library
+implicit
+
+
+
+How to make it work
+
+first set up either generatedata or generateharddata as the startup item and run the program. this will fill the csv files with new info.
+	
+	the generate hard data makes it so there are 3 clumps of simlar users so should get somewhat simlar results
+
+	for generate data you can decide how many users and items(games). you can also decide odds someone plays a game or not
+
+After the csv file is full you should just set the main.py as the startup item and run.Then it should give results in the console.
