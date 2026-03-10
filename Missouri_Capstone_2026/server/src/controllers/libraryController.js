@@ -5,7 +5,9 @@ export async function createFolder(req, res) {
     const { userId } = req.params;
     const { name } = req.body;
 
-    if (!name) return res.status(400).json({ ok: false, error: "name is required" });
+    if (!name) {
+      return res.status(400).json({ ok: false, error: "name is required" });
+    }
 
     const folder = await libraryService.createFolder(userId, name);
     return res.status(201).json({ ok: true, folder });
@@ -17,17 +19,20 @@ export async function createFolder(req, res) {
 export async function addGame(req, res) {
   try {
     const { userId, folderId } = req.params;
-    const { source, gameId, name, coverUrl } = req.body;
+    const { gameRawgId, gameName, status, rating } = req.body;
 
-    if (!source || !gameId || !name) {
-      return res.status(400).json({ ok: false, error: "source, gameId, and name are required" });
+    if (!gameRawgId || !gameName || !status) {
+      return res.status(400).json({
+        ok: false,
+        error: "gameRawgId, gameName, and status are required",
+      });
     }
 
     const saved = await libraryService.addGameToFolder(userId, folderId, {
-      source,
-      gameId,
-      name,
-      coverUrl,
+      gameRawgId,
+      gameName,
+      status,
+      rating,
     });
 
     return res.status(201).json({ ok: true, saved });

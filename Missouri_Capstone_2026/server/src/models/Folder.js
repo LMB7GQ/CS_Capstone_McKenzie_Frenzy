@@ -2,12 +2,13 @@ import mongoose from "mongoose";
 
 const FolderSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    name: { type: String, required: true, trim: true },
+    USER_ID: { type: Number, required: true, index: true },
+    NAME: { type: String, required: true, trim: true },
+    CREATED_DATE: { type: Date, default: Date.now },
   },
-  { timestamps: true }
+  { collection: "Folders" }
 );
 
-FolderSchema.index({ userId: 1, name: 1 }, { unique: true });
+FolderSchema.index({ USER_ID: 1, NAME: 1 }, { unique: true });
 
 export default mongoose.model("Folder", FolderSchema);

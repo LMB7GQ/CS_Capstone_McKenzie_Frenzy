@@ -2,17 +2,24 @@ import mongoose from "mongoose";
 
 const FolderGameSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    folderId: { type: mongoose.Schema.Types.ObjectId, ref: "Folder", required: true, index: true },
-
-    source: { type: String, required: true, enum: ["rawg", "igdb"] },
-    gameId: { type: String, required: true },
-    name: { type: String, required: true },
-    coverUrl: { type: String },
+    USER_ID: { type: Number, required: true, index: true },
+    FOLDER_ID: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      index: true,
+    },
+    GAME_RAWG_ID: { type: Number, required: true, index: true },
+    GAME_NAME: { type: String, required: true },
+    STATUS: { type: String, required: true },
+    RATING: { type: Number, default: null },
+    ADDED_DATE: { type: Date, default: Date.now },
   },
-  { timestamps: true }
+  { collection: "FolderGames" }
 );
 
-FolderGameSchema.index({ folderId: 1, source: 1, gameId: 1 }, { unique: true });
+FolderGameSchema.index(
+  { USER_ID: 1, FOLDER_ID: 1, GAME_RAWG_ID: 1 },
+  { unique: true }
+);
 
 export default mongoose.model("FolderGame", FolderGameSchema);
