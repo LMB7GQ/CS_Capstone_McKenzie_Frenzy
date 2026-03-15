@@ -1,5 +1,5 @@
-const {MongoClient} = require('mongodb');
-const uri = mongodb+srv://<db_username>:<db_password>@capstoneproject.bsi5mti.mongodb.net/?appName=CapstoneProject
+import {ObjectId} from 'mongodb';
+import {getDB} from '../config/db.js';
 
 class Folder {
     #id;
@@ -48,9 +48,14 @@ class Folder {
     }
 
     //methods
-    
-    function addGame(game) {
-        this.#games.push(game);
+
+    export async function addGameToFolder(folderId, gameId) {
+        //code to add game to folder in database
+        const db = getDB();
+        const game = await db.collection('games').findOne({_id: new ObjectId(gameId)});
+        const folder = await db.collection('folders').findOne({_id: new ObjectId(folderId)});
+        folder.games.push(game);
+        await db.collection('folders').updateOne({_id: new ObjectId(folderId)}, {$set: {games: folder.games}});
     }
 
     function RemoveGame(game) {
@@ -63,5 +68,10 @@ class Folder {
 
     function updateDatabase() {
         //code to update folder in database
+
+    }
+
+    function deleteFolderFromDatabase() {
+        //code to delete folder from database
     }
 }

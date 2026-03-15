@@ -1,11 +1,14 @@
 import {MongoClient} from 'mongodb';
-const uri = "DATABASE URI GOES HERE";
 
+
+const uri = process.env.MONGODB_URI;
 const client = new MongoClient(uri);
+let db; 
 
 async function connectToDatabase() {
     try {
         await client.connect();
+        db = client.db("Capstone");
         console.log("Connected to MongoDB");
     } catch (error) {
         console.error("Error connecting to MongoDB:", error);
@@ -21,4 +24,9 @@ async function disconnectFromDatabase() {
     }
 }
 
-export {connectToDatabase, disconnectFromDatabase, client};
+export function getDB() {
+    if(!db) {
+        throw new Error("Database not connected. Call connectToDatabase first.");
+    }
+    return db;
+}
