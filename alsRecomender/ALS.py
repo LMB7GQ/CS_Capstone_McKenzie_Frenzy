@@ -9,7 +9,8 @@ from model.train import train
 from utils.preprocessing import create_interaction_matrix
 from utils.data_loader import load_data
 
-def ALSStarter(df):
+
+def ALSStarter(df, index_to_game):
     load_dotenv()  # Load environment variables from .env file
     CSV_PATH = "alsRecomender/data/user_game_interactions_weighted.csv"
     OUTPUT_CSV = "alsRecomender/data/top10_recommendations.csv"
@@ -23,7 +24,7 @@ def ALSStarter(df):
     user_id_to_index = {uid: idx for idx, uid in user_index_to_id.items()}
 
     # -------------------------
-    # Train ALS model using THIS SAME MATRIX
+    # Train ALS model
     # -------------------------
     als_model = train(interaction_matrix)
 
@@ -31,7 +32,7 @@ def ALSStarter(df):
     print("Matrix num_users =", interaction_matrix.shape[1])
 
     # -------------------------
-    # Recommend top 10 items for each user and store in a DataFrame
+    # Recommend top 10 items
     # -------------------------
     recommendations = []
 
@@ -43,15 +44,16 @@ def ALSStarter(df):
             item_index_to_id=item_index_to_id,
             N=10
         )
+
         if top_items is not None:
-            # Make sure they are Python ints
-            top_items = [int(i) for i in top_items]
+            # Convert ALS item indices -> RAWG IDs
+            rawg_ids = [int(index_to_game[i]) for i in top_items if i in index_to_game]
         else:
-            top_items = []
+            rawg_ids = []
 
-        recommendations.append([user_id, top_items])
+        recommendations.append([user_id, rawg_ids])
 
-    USE_MONGO = True   # ← switch this to True when you want MongoDB
+    USE_MONGO = True
 
     df_recommendations = pd.DataFrame(
         recommendations,
@@ -59,43 +61,33 @@ def ALSStarter(df):
     )
 
     if not USE_MONGO:
-        # -------------------------
-        # Save as CSV
-        # -------------------------
         df_recommendations.to_csv(OUTPUT_CSV, index=False)
         print(f"Saved top 10 recommendations for {len(recommendations)} users → {OUTPUT_CSV}")
 
     else:
-        # -------------------------
-        # Save to MongoDB
-        # -------------------------
         try:
-            username = quote_plus(os.getenv("DBUSERNAME"))  # encode special chars
-            password = quote_plus(os.getenv("DBPASSWORD"))  # encode special chars
-            cluster = os.getenv("DATABASE")                 # just host
-            dbname = os.getenv("DBNAME")                    # your database inside the cluster
+            username = quote_plus(os.getenv("DBUSERNAME"))
+            password = quote_plus(os.getenv("DBPASSWORD"))
+            cluster = os.getenv("DATABASE")
+            dbname = os.getenv("DBNAME")
 
-    # Build URI
-            uri = f"mongodb+srv://{username}:{password}@{cluster}/{dbname}?retryWrites=true&w=majority"    
+            uri = f"mongodb+srv://{username}:{password}@{cluster}/{dbname}?retryWrites=true&w=majority"
             client = MongoClient(uri, serverSelectionTimeoutMS=5000)
-        
-            # Force connection test
+
             client.server_info()
             print("✅ Connected to MongoDB")
 
             db = client["Capstone"]
             collection = db["user_recommendations"]
 
-             # Optional: clear old recommendations
             collection.delete_many({})
 
-            # Prepare documents
             documents = [
                 {
                     "user_id": int(user_id),
-                    "top_10_items": top_items
+                    "top_10_items": rawg_ids
                 }
-                for user_id, top_items in recommendations
+                for user_id, rawg_ids in recommendations
             ]
 
             if documents:
@@ -116,4 +108,4 @@ def ALSStarter(df):
 
         except errors.PyMongoError as e:
             print(f"❌ MongoDB error: {e}")
-            
+
