@@ -35,8 +35,7 @@ router.get("/home", async (req, res) => {
       Game.find()
         .sort("-rating")
         .limit(10)
-        .select("name slug backgroundImage rating categories metacritic released"),
-
+        .select("name slug backgroundImage rating categories metacritic released screenshots developer publisher playtime"),
       Game.aggregate([
         { $unwind: "$categories" },
         { $sort: { rating: -1 } },
@@ -52,6 +51,10 @@ router.get("/home", async (req, res) => {
                 rating: "$rating",
                 metacritic: "$metacritic",
                 released: "$released",
+                screenshots: "$screenshots",
+                categories: "$categories",
+                developer: "$developer",
+                playtime: "$playtime",
               },
             },
           },
