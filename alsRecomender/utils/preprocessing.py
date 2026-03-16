@@ -25,7 +25,7 @@ def create_interaction_matrix(df):
     # Rows = items, Cols = users
     rows = df["item_id"].map(item_id_to_idx).values
     cols = df["user_id"].map(user_id_to_idx).values
-    data = df["hours_played"].values
+    data = df["Interaction_score"].values
 
     # Build items x users matrix
     interaction_matrix = coo_matrix(
