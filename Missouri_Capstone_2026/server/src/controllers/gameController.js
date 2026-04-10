@@ -10,3 +10,16 @@ function getGameById(gameId) {
     const db = getDB();
     return db.collection('games').findOne({_id: new ObjectId(gameId)});
 }
+
+
+function rateGame(game, rating) {
+    game.rating = rating;
+    const db = getDB();
+    return db.collection('games').updateOne({_id: new ObjectId(game._id)}, {$set: {rating: rating}});
+}
+
+//find game in database and update its rating
+function editGameRating(gameId, newRating) {
+    const db = getDB();
+    return db.collection('games').updateOne({_id: new ObjectId(gameId)}, {$set: {rating: newRating}});
+}
