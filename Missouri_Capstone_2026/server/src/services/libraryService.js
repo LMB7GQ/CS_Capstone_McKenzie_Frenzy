@@ -46,17 +46,46 @@ export async function getLibrary(userId) {
   }
 
   return folders.map((folder) => ({
-  folderId: folder._id,
-  userId: folder.USER_ID,
-  folderName: folder.NAME,
-  createdDate: folder.CREATED_DATE,
-  games: (byFolder.get(String(folder._id)) ?? []).map((game) => ({
-    folderGameId: game._id,
-    rawgId: game.GAME_RAWG_ID,
-    name: game.GAME_NAME,
-    status: game.STATUS,
-    rating: game.RATING,
-    addedDate: game.ADDED_DATE,
-  })),
-}));
+    folderId: folder._id,
+    userId: folder.USER_ID,
+    folderName: folder.NAME,
+    createdDate: folder.CREATED_DATE,
+    games: (byFolder.get(String(folder._id)) ?? []).map((game) => ({
+      folderGameId: game._id,
+      rawgId: game.GAME_RAWG_ID,
+      name: game.GAME_NAME,
+      status: game.STATUS,
+      rating: game.RATING,
+      addedDate: game.ADDED_DATE,
+    })),
+  }));
+}
+
+export async function deleteFolder(userId, folderId) {
+  const folder = await Folder.findOne({
+    _id: folderId,
+    USER_ID: Number(userId),
+  });
+
+  if (!folder) {
+    return {
+      ok: false,
+      error: "Folder not found for this user",
+    };
+  }
+
+  const deletedGames = await FolderGame.deleteMany({
+    USER_ID: Number(userId),
+    FOLDER_ID: folder._id,
+  });
+
+  await Folder.deleteOne({
+    _id: folder._id,
+    USER_ID: Number(userId),
+  });
+
+  return {
+    ok: true,
+    deletedGamesCount: deletedGames.deletedCount ?? 0,
+  };
 }

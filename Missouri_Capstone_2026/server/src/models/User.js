@@ -2,10 +2,13 @@ import mongoose from "mongoose";
 
 const UserSchema = new mongoose.Schema(
   {
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    displayName: { type: String, required: true, trim: true },
+    ID: { type: Number, required: true, unique: true, index: true },
+    USERNAME: { type: String, required: true, unique: true, trim: true },
+    EMAIL: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    DISPLAY_NAME: { type: String, required: true, trim: true },
+    CREATED_DATE: { type: Date, default: Date.now },
   },
-  { timestamps: true }
+  { collection: "Users", timestamps: false }
 );
 
 export default mongoose.model("User", UserSchema);

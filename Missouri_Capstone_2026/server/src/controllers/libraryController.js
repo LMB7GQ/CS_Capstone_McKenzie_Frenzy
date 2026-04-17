@@ -1,8 +1,8 @@
 import * as libraryService from "../services/libraryService.js";
 
-export async function createFolder(req, res) {
+export async function createMyFolder(req, res) {
   try {
-    const { userId } = req.params;
+    const userId = req.user.appUserId;
     const { name } = req.body;
 
     if (!name) {
@@ -16,9 +16,10 @@ export async function createFolder(req, res) {
   }
 }
 
-export async function addGame(req, res) {
+export async function addGameToMyFolder(req, res) {
   try {
-    const { userId, folderId } = req.params;
+    const userId = req.user.appUserId;
+    const { folderId } = req.params;
     const { gameRawgId, gameName, status, rating } = req.body;
 
     if (!gameRawgId || !gameName || !status) {
@@ -41,12 +42,40 @@ export async function addGame(req, res) {
   }
 }
 
-export async function getLibrary(req, res) {
+export async function getMyLibrary(req, res) {
   try {
-    const { userId } = req.params;
+    const userId = req.user.appUserId;
     const library = await libraryService.getLibrary(userId);
     return res.json({ ok: true, library });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });
+  }
+}
+
+export async function deleteMyFolder(req, res) {
+  try {
+    const userId = req.user.appUserId;
+    const { folderId } = req.params;
+
+    const result = await libraryService.deleteFolder(userId, folderId);
+
+    if (!result.ok) {
+      return res.status(404).json({
+        ok: false,
+        error: result.error,
+      });
+    }
+
+    return res.json({
+      ok: true,
+      message: "Folder deleted successfully",
+      deletedFolderId: folderId,
+      deletedGamesCount: result.deletedGamesCount,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      ok: false,
+      error: err.message,
+    });
   }
 }
