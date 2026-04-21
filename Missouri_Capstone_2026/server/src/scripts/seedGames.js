@@ -1,14 +1,11 @@
 /**
  * seedGames.js
  * -----------------------------------------------------------
- * Fetches games from the RAWG API and upserts them into MongoDB.
+ * Fetches games from RAWG and upserts them into MongoDB.
+ * Now fetches: videos, up to 20 screenshots, stores, series
  *
  * Usage:
- *   node scripts/seedGames.js
- *
- * Requires in .env:
- *   MONGO_URI=your_atlas_connection_string
- *   RAWG_API_KEY=your_rawg_api_key
+ *   node src/scripts/seedGames.js
  * -----------------------------------------------------------
  */
 
@@ -22,9 +19,6 @@ const RAWG_BASE = "https://api.rawg.io/api";
 
 // -----------------------------------------------------------
 // MASTER GAME LIST
-// Keys are the category names shown on your home page.
-// Values are search terms — kept close to what RAWG understands.
-// Duplicates across categories are intentional; we merge them.
 // -----------------------------------------------------------
 const GAME_LIST = {
   ACTION: [
@@ -38,7 +32,7 @@ const GAME_LIST = {
     "Metal Gear Solid V: The Phantom Pain",
     "Dark Souls III",
     "Elden Ring",
-    "Batman: Arkham City", // representative of the series
+    "Batman: Arkham City",
   ],
   INDIE: [
     "Outer Wilds",
@@ -47,6 +41,11 @@ const GAME_LIST = {
     "Shovel Knight",
     "Cuphead",
     "Undertale",
+    "Disco Elysium",
+    "Slay the Spire",
+    "Stardew Valley",
+    "Hades",
+    "Baba Is You",
   ],
   STRATEGY: ["StarCraft II", "Sid Meier's Civilization VI", "League of Legends"],
   RPG: [
@@ -68,7 +67,6 @@ const GAME_LIST = {
     "Marvel Rivals",
     "Tom Clancy's Rainbow Six Siege",
     "Helldivers 2",
-    "ARC Raiders",
     "Fortnite",
     "DOOM Eternal",
     "BioShock",
@@ -95,13 +93,15 @@ const GAME_LIST = {
     "Dark Souls",
     "Ghost of Tsushima",
   ],
-  PUZZLE: ["Tetris Effect"],
+  PUZZLE: ["Tetris Effect", "Portal 2", "The Witness", "Baba Is You", "Limbo", "Inside"],
   RACING: [
     "Mario Kart 8 Deluxe",
     "Gran Turismo 7",
     "Forza Horizon 5",
     "Trackmania",
     "F1 23",
+    "Dirt 5",
+    "Need for Speed Heat",
   ],
   SIMULATION: [
     "Garry's Mod",
@@ -110,12 +110,18 @@ const GAME_LIST = {
     "RollerCoaster Tycoon 3",
     "Microsoft Flight Simulator",
     "Farming Simulator 22",
+    "Cities: Skylines",
   ],
   ARCADE: [
     "Pac-Man",
     "Galaga",
     "Space Invaders",
     "Donkey Kong",
+    "Asteroids",
+    "Frogger",
+    "Street Fighter II",
+    "Mortal Kombat",
+    "NBA Jam",
   ],
   PLATFORMER_2D: [
     "Super Mario Bros.",
@@ -138,12 +144,13 @@ const GAME_LIST = {
     "Spyro Reignited Trilogy",
   ],
   MMO: [
-    "ARC Raiders",
     "Helldivers 2",
     "World of Warcraft",
     "Old School RuneScape",
     "Final Fantasy XIV",
     "Roblox",
+    "Guild Wars 2",
+    "EVE Online",
   ],
   FIGHTING: [
     "Mortal Kombat 11",
@@ -155,7 +162,14 @@ const GAME_LIST = {
     "Marvel vs. Capcom: Infinite",
     "Injustice 2",
   ],
-  FAMILY: ["Mario Party Superstars", "Jackbox Party Pack"],
+  FAMILY: [
+    "Mario Party Superstars",
+    "Jackbox Party Pack",
+    "Minecraft",
+    "Animal Crossing: New Horizons",
+    "Luigi's Mansion 3",
+    "Overcooked! 2",
+  ],
   CARD: [
     "Hearthstone",
     "Balatro",
@@ -170,6 +184,9 @@ const GAME_LIST = {
     "Balatro",
     "Hades",
     "Enter the Gungeon",
+    "Dead Cells",
+    "Spelunky 2",
+    "Slay the Spire 2",
   ],
   SPORTS: [
     "NBA 2K24",
@@ -194,69 +211,66 @@ const GAME_LIST = {
 // -----------------------------------------------------------
 // Helpers
 // -----------------------------------------------------------
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** Sleep to respect RAWG's rate limit (free tier ~20 req/s) */
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/**
- * Search RAWG for a game by name and return the best match.
- * Falls back to the first result if exact match not found.
- */
 async function searchRAWG(gameName) {
-  const url = `${RAWG_BASE}/games`;
-  const response = await axios.get(url, {
-    params: {
-      key: RAWG_KEY,
-      search: gameName,
-      page_size: 5,
-      search_precise: true,
-    },
+  const res = await axios.get(`${RAWG_BASE}/games`, {
+    params: { key: RAWG_KEY, search: gameName, page_size: 5, search_precise: true },
   });
-
-  const results = response.data.results;
-  if (!results || results.length === 0) return null;
-
-  // Try to find an exact (case-insensitive) name match first
-  const exact = results.find(
-    (g) => g.name.toLowerCase() === gameName.toLowerCase()
-  );
+  const results = res.data.results || [];
+  if (!results.length) return null;
+  const exact = results.find(g => g.name.toLowerCase() === gameName.toLowerCase());
   return exact || results[0];
 }
 
-/**
- * Fetch full game details (includes description, website, developer, etc.)
- */
 async function getGameDetails(rawgId) {
-  const url = `${RAWG_BASE}/games/${rawgId}`;
-  const response = await axios.get(url, { params: { key: RAWG_KEY } });
-  return response.data;
-}
-
-/**
- * Fetch up to 3 screenshots for a game
- */
-async function getScreenshots(rawgId) {
-  const url = `${RAWG_BASE}/games/${rawgId}/screenshots`;
-  const response = await axios.get(url, {
-    params: { key: RAWG_KEY, page_size: 3 },
+  const res = await axios.get(`${RAWG_BASE}/games/${rawgId}`, {
+    params: { key: RAWG_KEY },
   });
-  return response.data.results || [];
+  return res.data;
 }
 
-/**
- * Build a clean document from RAWG data
- */
-function buildGameDoc(details, screenshots, categories) {
-  const developer =
-    details.developers && details.developers.length > 0
-      ? details.developers[0].name
-      : undefined;
+async function getScreenshots(rawgId) {
+  const res = await axios.get(`${RAWG_BASE}/games/${rawgId}/screenshots`, {
+    params: { key: RAWG_KEY, page_size: 20 }, // increased to 20
+  });
+  return res.data.results || [];
+}
 
-  const publisher =
-    details.publishers && details.publishers.length > 0
-      ? details.publishers[0].name
-      : undefined;
+async function getVideos(rawgId) {
+  try {
+    const res = await axios.get(`${RAWG_BASE}/games/${rawgId}/movies`, {
+      params: { key: RAWG_KEY },
+    });
+    return res.data.results || [];
+  } catch {
+    return []; // not all games have trailers
+  }
+}
 
+async function getStores(rawgId) {
+  try {
+    const res = await axios.get(`${RAWG_BASE}/games/${rawgId}/stores`, {
+      params: { key: RAWG_KEY },
+    });
+    return res.data.results || [];
+  } catch {
+    return [];
+  }
+}
+
+async function getSeries(rawgId) {
+  try {
+    const res = await axios.get(`${RAWG_BASE}/games/${rawgId}/game-series`, {
+      params: { key: RAWG_KEY, page_size: 10 },
+    });
+    return res.data.results || [];
+  } catch {
+    return [];
+  }
+}
+
+function buildGameDoc(details, screenshots, videos, stores, series, categories) {
   return {
     rawgId: details.id,
     name: details.name,
@@ -264,30 +278,69 @@ function buildGameDoc(details, screenshots, categories) {
     description: details.description_raw,
     released: details.released,
     backgroundImage: details.background_image,
+    backgroundImageAdditional: details.background_image_additional,
+
+    // Ratings
     rating: details.rating,
     ratingTop: details.rating_top,
     ratingsCount: details.ratings_count,
     metacritic: details.metacritic,
+    ratingsBreakdown: (details.ratings || []).map(r => ({
+      id: r.id,
+      title: r.title,
+      count: r.count,
+      percent: r.percent,
+    })),
+
+    // Info
     playtime: details.playtime,
     website: details.website,
-    esrbRating: details.esrb_rating ? details.esrb_rating.name : undefined,
-    developer,
-    publisher,
-    genres: (details.genres || []).map(({ id, name, slug }) => ({
-      id,
-      name,
-      slug,
+    esrbRating: details.esrb_rating?.name,
+    developer: details.developers?.[0]?.name,
+    publisher: details.publishers?.[0]?.name,
+    achievementsCount: details.achievements_count || 0,
+
+    // Media
+    screenshots: screenshots.map(s => ({ id: s.id, image: s.image })),
+    videos: videos.map(v => ({
+      id: v.id,
+      name: v.name,
+      preview: v.preview,
+      data: {
+        480: v.data?.[480],
+        max: v.data?.max,
+      },
     })),
-    tags: (details.tags || [])
-      .slice(0, 20)
-      .map(({ id, name, slug }) => ({ id, name, slug })), // cap tags at 20
+
+    // Stores
+    stores: stores.map(s => ({
+      id: s.store?.id,
+      name: s.store?.name,
+      slug: s.store?.slug,
+      url: s.url,
+    })),
+
+    // Series
+    series: series.map(g => ({
+      rawgId: g.id,
+      name: g.name,
+      slug: g.slug,
+      backgroundImage: g.background_image,
+      rating: g.rating,
+      released: g.released,
+    })),
+
+    // Genres, tags, platforms
+    genres: (details.genres || []).map(({ id, name, slug }) => ({ id, name, slug })),
+    tags: (details.tags || []).slice(0, 20).map(({ id, name, slug }) => ({ id, name, slug })),
     platforms: (details.platforms || []).map(({ platform }) => ({
       name: platform.name,
       slug: platform.slug,
     })),
-    screenshots: screenshots.map(({ id, image }) => ({ id, image })),
+
     categories,
     lastFetched: new Date(),
+    extendedDataFetched: true,
   };
 }
 
@@ -297,10 +350,8 @@ function buildGameDoc(details, screenshots, categories) {
 async function seed() {
   await connectDB();
 
-  // Build a map: normalizedName -> Set of categories
-  // This handles duplicates (e.g. Elden Ring in ACTION, RPG, ADVENTURE)
-  const gameMap = new Map(); // key: lowercase name, value: { displayName, categories }
-
+  // Build deduplicated game map
+  const gameMap = new Map();
   for (const [category, games] of Object.entries(GAME_LIST)) {
     for (const gameName of games) {
       const key = gameName.toLowerCase();
@@ -320,42 +371,34 @@ async function seed() {
     try {
       console.log(`🔍 Searching: "${displayName}"...`);
 
-      // 1. Search for the game
       const searchResult = await searchRAWG(displayName);
-      await sleep(300); // be polite to the API
-
+      await sleep(300);
       if (!searchResult) {
         console.warn(`  ⚠️  Not found: "${displayName}"`);
         failed++;
         continue;
       }
 
-      // 2. Get full details
-      const details = await getGameDetails(searchResult.id);
-      await sleep(300);
+      const [details, screenshots, videos, stores, series] = await Promise.all([
+        getGameDetails(searchResult.id).then(r => (sleep(300), r)),
+        getScreenshots(searchResult.id).then(r => (sleep(300), r)),
+        getVideos(searchResult.id).then(r => (sleep(300), r)),
+        getStores(searchResult.id).then(r => (sleep(300), r)),
+        getSeries(searchResult.id).then(r => (sleep(300), r)),
+      ]);
 
-      // 3. Get screenshots
-      const screenshots = await getScreenshots(searchResult.id);
-      await sleep(300);
+      const gameDoc = buildGameDoc(details, screenshots, videos, stores, series, [...categories]);
 
-      // 4. Build the document
-      const gameDoc = buildGameDoc(details, screenshots, [...categories]);
-
-      // 5. Upsert — update if exists, insert if not
-      const { categories: gameCategories, ...gameData } = gameDoc;
-
-    await Game.findOneAndUpdate(
-      { rawgId: gameDoc.rawgId },
+      await Game.findOneAndUpdate(
+        { rawgId: gameDoc.rawgId },
         {
-          $set: gameData,
-          $addToSet: { categories: { $each: gameCategories } },
+          $set: gameDoc,
+          $addToSet: { categories: { $each: [...categories] } },
         },
-      { upsert: true, returnDocument: "after" }
-    );
-
-      console.log(
-        `  ✅ Saved: "${details.name}" [${[...categories].join(", ")}]`
+        { upsert: true, returnDocument: "after" }
       );
+
+      console.log(`  ✅ Saved: "${details.name}" [${[...categories].join(", ")}]`);
       seeded++;
     } catch (err) {
       console.error(`  ❌ Error for "${displayName}": ${err.message}`);
