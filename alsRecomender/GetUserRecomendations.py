@@ -12,18 +12,15 @@ from ALS import ALSStarter
 # ---------------------------
 load_dotenv()
 
-username = quote_plus(os.getenv("DBUSERNAME"))
-password = quote_plus(os.getenv("DBPASSWORD"))
-cluster = os.getenv("DATABASE")
-dbname = os.getenv("DBNAME")
-
 # ---------------------------
-# Build Mongo URI
+# Build Mongo URI   
 # ---------------------------
-uri = f"mongodb+srv://{username}:{password}@{cluster}/{dbname}?retryWrites=true&w=majority"
+uri = os.getenv("MONGO_URI") 
 
-client = MongoClient(uri, serverSelectionTimeoutMS=5000)
-
+client = MongoClient(
+    uri,
+    serverSelectionTimeoutMS=10000,
+)
 print("✅ Connected to MongoDB")
 
 # ---------------------------
@@ -57,11 +54,26 @@ index_to_game = {i: gid for gid, i in game_to_index.items()}
 # Status weights
 # ---------------------------
 status_weights = {
+    "default": 0.0,
     "wishlist": 1.0,
     "playing": 2.0,
     "completed": 3.0
 }
 
+def calculate_rating_adjustment(user_rating):
+    """
+    Convert user rating (1-6) to weight adjustment.
+    Rating 6 is the default value that contributes 0 weight.
+    """
+    rating_adjustments = {
+        1: -1.0,    # Very negative
+        2: -0.5,    # Slightly negative
+        3: 0.10,    # Neutral-positive
+        4: 0.75,    # Positive
+        5: 1.5,     # Very positive
+        6: 0.0      # Default (no adjustment)
+    }
+    return rating_adjustments.get(user_rating, 0.0)
 
 # ---------------------------
 # Build interaction rows
@@ -72,13 +84,18 @@ for fg in foldergames_col.find({}, {"USER_ID": 1, "GAME_RAWG_ID": 1, "STATUS": 1
 
     user = fg.get("USER_ID")
     game = fg.get("GAME_RAWG_ID")
-    status = fg.get("STATUS", "wishlist")  # default if missing
+    status = fg.get("STATUS", "default")  # default if missing
+    Rating = fg.get("RATING",6)
 
     # Ensure user and game exist in our mappings
     if user in user_to_index and game in game_to_index:
 
         weight = status_weights.get(status.lower(), 1.0)
 
+        if isinstance(Rating, (int, float)):
+            rating_adjustment = calculate_rating_adjustment(int(Rating))
+            weight += rating_adjustment
+        
         csv_rows.append([
             user_to_index[user],
             game_to_index[game],
@@ -102,6 +119,31 @@ df = df.groupby(["user_id", "item_id"], as_index=False).sum()
 
 df["Interaction_score"] = df["Interaction_score"].astype(float)
 
+df["Interaction_score"] = df["Interaction_score"].apply(lambda x: max(0, x))
+
+
+# ---------------------------
+# Ensure users with zero interactions are present
+# (adds a zero-scored row for any missing user so they appear in the items×users matrix)
+# ---------------------------
+all_user_indices = set(user_to_index.values())
+present_user_indices = set(df["user_id"].unique()) if not df.empty else set()
+missing_users = sorted(all_user_indices - present_user_indices)
+
+if missing_users:
+    # pick an existing item index to attach the zero-row; if no items, skip
+    if len(index_to_game) > 0:
+        default_item_idx = next(iter(index_to_game.keys()))
+        filler_rows = [[u, default_item_idx, 0.0] for u in missing_users]
+        filler_df = pd.DataFrame(filler_rows, columns=["user_id", "item_id", "Interaction_score"])
+        df = pd.concat([df, filler_df], ignore_index=True)
+
+
+# ---------------------------
+# Calculate total interactions per user
+# ---------------------------
+user_interaction_counts = df.groupby("user_id").size().to_dict()
+
 
 # ---------------------------
 # Optional: Save mappings
@@ -124,4 +166,4 @@ user_map_df = pd.DataFrame({
 # ---------------------------
 # Run ALS
 # ---------------------------
-ALSStarter(df, index_to_game)
+ALSStarter(df, index_to_game, user_interaction_counts)

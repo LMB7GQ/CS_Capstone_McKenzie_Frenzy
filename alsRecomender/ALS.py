@@ -10,10 +10,12 @@ from utils.preprocessing import create_interaction_matrix
 from utils.data_loader import load_data
 
 
-def ALSStarter(df, index_to_game):
+def ALSStarter(df, index_to_game, user_interaction_counts):
     load_dotenv()  # Load environment variables from .env file
     CSV_PATH = "alsRecomender/data/user_game_interactions_weighted.csv"
     OUTPUT_CSV = "alsRecomender/data/top10_recommendations.csv"
+    PRESET_RAWG_IDS = [28, 3498, 3328, 13537, 58175, 3192, 2551, 326243, 28154, 13627]
+    INTERACTION_THRESHOLD = 3
 
     # -------------------------
     # Create interaction matrix (items x users)
@@ -23,7 +25,6 @@ def ALSStarter(df, index_to_game):
     # Build reverse mapping: raw user_id -> ALS internal index
     user_id_to_index = {uid: idx for idx, uid in user_index_to_id.items()}
 
-    # -------------------------
     # Train ALS model
     # -------------------------
     als_model = train(interaction_matrix)
@@ -35,21 +36,32 @@ def ALSStarter(df, index_to_game):
     # Recommend top 10 items
     # -------------------------
     recommendations = []
+    preset_user_count = 0
 
     for user_idx, user_id in user_index_to_id.items():
-        top_items = recommend_top_items(
-            model=als_model,
-            user_idx=user_idx,
-            interaction_matrix=interaction_matrix,
-            item_index_to_id=item_index_to_id,
-            N=10
-        )
-
-        if top_items is not None:
-            # Convert ALS item indices -> RAWG IDs
-            rawg_ids = [int(index_to_game[i]) for i in top_items if i in index_to_game]
+        # Check if user has fewer than threshold interactions
+        total_interactions = user_interaction_counts.get(user_idx, 0)
+        
+        if total_interactions < INTERACTION_THRESHOLD:
+            # User has too few interactions — use preset recommendations
+            rawg_ids = PRESET_RAWG_IDS
+            preset_user_count += 1
         else:
-            rawg_ids = []
+            # User has enough interactions — use ALS recommendations
+            top_items = recommend_top_items(
+                model=als_model,
+                user_idx=user_idx,
+                interaction_matrix=interaction_matrix,
+                item_index_to_id=item_index_to_id,
+                N=10
+            )
+
+            if top_items is not None:
+                # Convert ALS item indices -> RAWG IDs
+                rawg_ids = [int(index_to_game[i]) for i in top_items if i in index_to_game]
+            else:
+                # Fallback to preset if ALS returns None
+                rawg_ids = PRESET_RAWG_IDS
 
         recommendations.append([user_id, rawg_ids])
 
