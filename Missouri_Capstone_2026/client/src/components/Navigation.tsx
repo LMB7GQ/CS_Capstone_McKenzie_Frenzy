@@ -1,15 +1,24 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { checkAuth } from '../api/Libraryapi'
+import { logout } from '../services/authService'
 
 export default function Navigation() {
   const [query, setQuery] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const navigate = useNavigate()
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setMenuOpen(false)
   }, [navigate])
+
+  useEffect(() => {
+    checkAuth().then(result => {
+      setIsLoggedIn(result.ok && !!result.user)
+    })
+  }, [])
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
@@ -27,10 +36,18 @@ export default function Navigation() {
     }
   }
 
+  async function handleLogout() {
+    const result = await logout()
+    if (result.ok) {
+      setIsLoggedIn(false)
+      navigate('/login')
+    }
+  }
+
   const NAV_LINKS = [
     { label: 'Home',      to: '/' },
     { label: 'Community', to: '/community/1' },
-    { label: 'Library',   to: '/library/1' },
+    { label: 'Library',   to: '/library/me' },
     { label: 'Profile',   to: '/profile/1' },
   ]
 
@@ -154,24 +171,46 @@ export default function Navigation() {
             </div>
           </form>
 
-          {/* Login */}
-          <Link to="/login"
-            style={{
-              flexShrink: 0, marginLeft: '12px',
-              fontFamily: "'Exo 2', sans-serif",
-              fontSize: '0.8rem', fontWeight: 700,
-              letterSpacing: '0.08em', textTransform: 'uppercase',
-              color: '#0a0f0d', backgroundColor: '#4ade80',
-              padding: '0 20px', height: '38px', borderRadius: '6px',
-              display: 'flex', alignItems: 'center',
-              textDecoration: 'none', whiteSpace: 'nowrap',
-              transition: 'background-color 0.15s ease',
-            }}
-            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#86efac'}
-            onMouseLeave={e => e.currentTarget.style.backgroundColor = '#4ade80'}
-          >
-            Login
-          </Link>
+          {/* Auth Button */}
+          {isLoggedIn ? (
+            <button
+              onClick={handleLogout}
+              style={{
+                flexShrink: 0, marginLeft: '12px',
+                fontFamily: "'Exo 2', sans-serif",
+                fontSize: '0.8rem', fontWeight: 700,
+                letterSpacing: '0.08em', textTransform: 'uppercase',
+                color: '#0a0f0d', backgroundColor: '#f87171',
+                padding: '0 20px', height: '38px', borderRadius: '6px',
+                border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center',
+                whiteSpace: 'nowrap',
+                transition: 'background-color 0.15s ease',
+              }}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#ef4444'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#f87171'}
+            >
+              Logout
+            </button>
+          ) : (
+            <Link to="/login"
+              style={{
+                flexShrink: 0, marginLeft: '12px',
+                fontFamily: "'Exo 2', sans-serif",
+                fontSize: '0.8rem', fontWeight: 700,
+                letterSpacing: '0.08em', textTransform: 'uppercase',
+                color: '#0a0f0d', backgroundColor: '#4ade80',
+                padding: '0 20px', height: '38px', borderRadius: '6px',
+                display: 'flex', alignItems: 'center',
+                textDecoration: 'none', whiteSpace: 'nowrap',
+                transition: 'background-color 0.15s ease',
+              }}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#86efac'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#4ade80'}
+            >
+              Login
+            </Link>
+          )}
 
         </nav>
       </header>
