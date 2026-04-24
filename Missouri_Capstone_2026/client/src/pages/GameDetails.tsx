@@ -319,6 +319,16 @@ export default function GameDetails() {
             }}
               onMouseEnter={e => e.currentTarget.style.backgroundColor = '#86efac'}
               onMouseLeave={e => e.currentTarget.style.backgroundColor = '#4ade80'}
+              onClick={() => navigate('/library/me', {
+                state: {
+                  autoAdd: true,
+                  game: {
+                    rawgId: game.rawgId,
+                    name: game.name,
+                    backgroundImage: game.backgroundImage,
+                  }
+                }
+              })}
             >
               + Add to Library
             </button>
