@@ -264,7 +264,9 @@ class Game {
 
     
 }
-import mongoose from "mongoose";
+
+//this stuff was randomly added. Gotta check if we need it or not.
+/*import mongoose from "mongoose";
 
 const GameSchema = new mongoose.Schema(
   {
@@ -312,3 +314,4 @@ GameSchema.index({ name: "text" }); // enables text search
 // "Games" (third argument) explicitly targets your existing Atlas collection
 // Without this, Mongoose would auto-create a new "games" (lowercase) collection
 export default mongoose.model("Game", GameSchema, "Games");
+*/
