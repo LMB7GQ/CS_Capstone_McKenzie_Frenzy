@@ -36,3 +36,5 @@ coverage/
 # Package managers
 package-lock.json
 yarn.lock
+/.vs
+/als
